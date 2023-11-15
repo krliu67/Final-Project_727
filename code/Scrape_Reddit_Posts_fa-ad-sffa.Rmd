@@ -1,0 +1,448 @@
+
+```{r, message = FALSE}
+library(xml2)
+library(rvest)
+library(tidyverse)
+library(jsonlite)
+library(robotstxt)
+library(RSocrata)
+library(dplyr)
+library(tidytext)
+library(tm)
+library(tidytext)
+library(RedditExtractoR)
+library(stringr)
+```
+
+
+
+对象命名规则： urls_[aa:affirmative action / fa:fair admission]_[news / politics / harvard]
+              comments_[aa:affirmative action / fa:fair admission]_[news / politics / harvard]
+垃圾变量/临时变量：temp开头，如果后面不用, 及时remove，rm()
+
+
+
+```{r}
+posts_fa_news <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "news",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_news$url)
+
+write.csv(as.data.frame(posts_fa_news), file = "posts_fa_news.csv", row.names = FALSE)
+```
+
+```{r}
+posts_fa_politics <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "politics",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_politics$url)
+
+write.csv(posts_fa_politics, file = "posts_fa_politics.csv", row.names = FALSE)
+```
+
+```{r}
+posts_fa_harvard<- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "harvard",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_harvard$url)
+
+write.csv(posts_fa_harvard, file = "posts_fa_harvard.csv", row.names = FALSE)
+```
+```{r}
+posts_fa_academia <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "academia",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_academia$url)
+
+write.csv(posts_fa_academia , file = "posts_fa_academia.csv", row.names = FALSE)
+```
+```{r}
+posts_fa_law <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "law",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_law$url)
+
+write.csv(posts_fa_law , file = "posts_fa_law.csv", row.names = FALSE)
+```
+```{r}
+posts_fa_education <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "education",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_education$url)
+
+write.csv(posts_fa_education , file = "posts_fa_education.csv", row.names = FALSE)
+```
+
+
+```{r}
+posts_fa_blackladies <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "blackladies",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_blackladies$url)
+
+write.csv(posts_fa_blackladies , file = "posts_fa_blackladies.csv", row.names = FALSE)
+```
+
+```{r}
+posts_fa_blackmen <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "blackmen",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_blackmen$url)
+
+write.csv(posts_fa_blackmen , file = "posts_fa_blackmen.csv", row.names = FALSE)
+```
+```{r}
+posts_fa_whitepeopletwitter <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "WhitePeopleTwitter",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_whitepeopletwitter$url)
+
+write.csv(posts_fa_whitepeopletwitter , file = "posts_fa_whitepeopletwitter.csv", row.names = FALSE)
+```
+```{r}
+posts_fa_asianamerican <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "asianamerican",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_asianamerican$url)
+
+write.csv(posts_fa_asianamerican , file = "posts_fa_asianamerican.csv", row.names = FALSE)
+```
+```{r}
+posts_fa_asian <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "asian",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_asian$url)
+
+write.csv(posts_fa_asian , file = "posts_fa_asian.csv", row.names = FALSE)
+```
+```{r}
+posts_fa_democrats <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "Democrats",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_democrats$url)
+
+write.csv(posts_fa_democrats , file = "posts_fa_democrats.csv", row.names = FALSE)
+```
+```{r}
+posts_fa_republican <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "Republican",
+                                       sort_by = "top", period = "all")
+
+head(posts_fa_republican$url)
+
+write.csv(posts_fa_republican , file = "posts_fa_republican.csv", row.names = FALSE)
+```
+##SFFA
+```{r}
+posts_sffa_news <- find_thread_urls(keywords = "SFFA",
+                                       subreddit = "news",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_news$url)
+
+write.csv(posts_sffa_news, file = "posts_sffa_news.csv", row.names = FALSE)
+```
+
+```{r}
+posts_sffa_politics <- find_thread_urls(keywords = "SFFA",
+                                       subreddit = "politics",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_politics$url)
+
+write.csv(posts_sffa_politics, file = "posts_sffa_politics.csv", row.names = FALSE)
+```
+
+```{r}
+posts_sffa_harvard<- find_thread_urls(keywords = "SFFA",
+                                       subreddit = "harvard",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_harvard$url)
+
+write.csv(posts_sffa_harvard, file = "posts_sffa_harvard.csv", row.names = FALSE)
+```
+```{r}
+posts_sffa_academia <- find_thread_urls(keywords = "SFFA",
+                                       subreddit = "academia",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_academia$url)
+
+write.csv(posts_sffa_academia , file = "posts_sffa_academia.csv", row.names = FALSE)
+```
+```{r}
+posts_sffa_law <- find_thread_urls(keywords = "SFFA",
+                                       subreddit = "law",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_law$url)
+
+write.csv(posts_sffa_law , file = "posts_sffa_law.csv", row.names = FALSE)
+```
+```{r}
+posts_sffa_education <- find_thread_urls(keywords = "SFFA",
+                                       subreddit = "education",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_education$url)
+
+write.csv(posts_sffa_education , file = "posts_sffa_education.csv", row.names = FALSE)
+```
+
+
+```{r}
+posts_sffa_blackladies <- find_thread_urls(keywords = "SFFA",
+                                       subreddit = "blackladies",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_blackladies$url)
+
+write.csv(posts_sffa_blackladies , file = "posts_sffa_blackladies.csv", row.names = FALSE)
+```
+
+```{r}
+posts_sffa_blackmen <- find_thread_urls(keywords = "SFFA",
+                                       subreddit = "blackmen",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_blackmen$url)
+
+write.csv(posts_sffa_blackmen , file = "posts_sffa_blackmen.csv", row.names = FALSE)
+```
+```{r}
+posts_sffa_whitepeopletwitter <- find_thread_urls(keywords = "SFFA",
+                                       subreddit = "WhitePeopleTwitter",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_whitepeopletwitter$url)
+
+write.csv(posts_sffa_whitepeopletwitter , file = "posts_sffa_whitepeopletwitter.csv", row.names = FALSE)
+```
+```{r}
+posts_sffa_asianamerican <- find_thread_urls(keywords = "sffa",
+                                       subreddit = "asianamerican",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_asianamerican$url)
+
+write.csv(posts_sffa_asianamerican , file = "posts_sffa_asianamerican.csv", row.names = FALSE)
+```
+```{r}
+posts_sffa_asian <- find_thread_urls(keywords = "SFFA",
+                                       subreddit = "asian",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_asian$url)
+
+write.csv(posts_sffa_asian , file = "posts_sffa_asian.csv", row.names = FALSE)
+```
+```{r}
+posts_sffa_democrats <- find_thread_urls(keywords = "SFFA",
+                                       subreddit = "Democrats",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_democrats$url)
+
+write.csv(posts_sffa_democrats , file = "posts_sffa_democrats.csv", row.names = FALSE)
+```
+```{r}
+posts_sffa_republican <- find_thread_urls(keywords = "SFFA",
+                                       subreddit = "Republican",
+                                       sort_by = "top", period = "all")
+
+head(posts_sffa_republican$url)
+
+write.csv(posts_sffa_republican , file = "posts_sffa_republican.csv", row.names = FALSE)
+```
+
+##Admissions Discrimination
+```{r}
+posts_ad_news <- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "news",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_news$url)
+
+write.csv(posts_ad_news, file = "posts_ad_news.csv", row.names = FALSE)
+```
+
+```{r}
+posts_ad_politics <- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "politics",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_politics$url)
+
+write.csv(posts_ad_politics, file = "posts_ad_politics.csv", row.names = FALSE)
+```
+
+```{r}
+posts_ad_harvard<- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "harvard",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_harvard$url)
+
+write.csv(posts_ad_harvard, file = "posts_ad_harvard.csv", row.names = FALSE)
+```
+```{r}
+posts_ad_academia <- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "academia",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_academia$url)
+
+write.csv(posts_ad_academia , file = "posts_ad_academia.csv", row.names = FALSE)
+```
+```{r}
+posts_ad_law <- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "law",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_law$url)
+
+write.csv(posts_ad_law , file = "posts_ad_law.csv", row.names = FALSE)
+```
+```{r}
+posts_ad_education <- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "education",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_education$url)
+
+write.csv(posts_ad_education , file = "posts_ad_education.csv", row.names = FALSE)
+```
+
+
+```{r}
+posts_ad_blackladies <- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "blackladies",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_blackladies$url)
+
+write.csv(posts_ad_blackladies , file = "posts_ad_blackladies.csv", row.names = FALSE)
+```
+
+```{r}
+posts_ad_blackmen <- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "blackmen",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_blackmen$url)
+
+write.csv(posts_ad_blackmen , file = "posts_ad_blackmen.csv", row.names = FALSE)
+```
+```{r}
+posts_ad_whitepeopletwitter <- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "WhitePeopleTwitter",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_whitepeopletwitter$url)
+
+write.csv(posts_ad_whitepeopletwitter , file = "posts_ad_whitepeopletwitter.csv", row.names = FALSE)
+```
+```{r}
+posts_ad_asianamerican <- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "asianamerican",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_asianamerican$url)
+
+write.csv(posts_ad_asianamerican , file = "posts_ad_asianamerican.csv", row.names = FALSE)
+```
+```{r}
+posts_ad_asian <- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "asian",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_asian$url)
+
+write.csv(posts_ad_asian , file = "posts_ad_asian.csv", row.names = FALSE)
+```
+```{r}
+posts_ad_democrats <- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "Democrats",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_democrats$url)
+
+write.csv(posts_ad_democrats , file = "posts_ad_democrats.csv", row.names = FALSE)
+```
+```{r}
+posts_ad_republican <- find_thread_urls(keywords = "Admissions Discrimination",
+                                       subreddit = "Republican",
+                                       sort_by = "top", period = "all")
+
+head(posts_ad_republican$url)
+
+write.csv(posts_ad_republican , file = "posts_ad_republican.csv", row.names = FALSE)
+```
+
+
+
+
+## test - scrape comments from posts
+```{r}
+### just take the 1st row
+temp_threads_contents <- get_thread_content("https://www.reddit.com/r/news/comments/14m61u8/supreme_court_rules_against_affirmative_action/")
+temp <- temp_threads_contents$comments[1,]
+```
+
+- aa 
+```{r}
+comments_aa_news <- temp
+for (i in 1:dim(urls_aa_news)[1]) {
+  temp_threads_contents <- get_thread_content(urls_aa_news$url[i])
+  comments_aa_news <- rbind(comments_aa_news,temp_threads_contents$comments)
+}
+
+```
+
+
+```{r}
+urls_fa_news <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "news",
+                                       sort_by = "top", period = "all")
+# Could not find
+# head(urls_fa_news$url)
+```
+```{r}
+urls_fa_politics <- find_thread_urls(keywords = "fair admission",
+                                       subreddit = "politics",
+                                       sort_by = "top", period = "all")
+
+head(urls_fa_politics$url)
+```
+- fa 
+```{r}
+comments_fa_politics <- temp
+for (i in 1:dim(urls_fa_politics)[1]) {
+  temp_threads_contents <- get_thread_content(urls_fa_politics$url[i])
+  comments_fa_politics <- rbind(comments_fa_politics,temp_threads_contents$comments)
+}
+
+```
+- sffa
+
+```{r}
+urls_fa_harvard <- find_thread_urls(keywords = "Title VI of the Civil Rights Act",
+                                        subreddit = "Politics",
+                                       sort_by = "top", period = "all")
+
+head(urls_fa_harvard$url)
+```
+
