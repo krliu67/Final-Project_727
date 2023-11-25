@@ -1,0 +1,70 @@
+```{r}
+library(quanteda)
+library(SentimentAnalysis)
+library(vader)
+library(GGally)
+library(magrittr)
+```
+
+```{r}
+comments <- read.csv("data/scraped_comment.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8") %>% distinct()
+```
+
+
+```{r}
+text_comments <- comments %>% dplyr::select(date,comment)
+```
+
+
+```{r}
+irrelevantWords <- c("[deleted]","[removed]")
+
+filtered_comments <- text_comments %>% filter(comment != "[deleted]" & comment != "[removed]")
+```
+
+```{r}
+sentiments <- analyzeSentiment(iconv(as.character(filtered_comments$comment), to='UTF-8'))
+head(sentiments)
+```
+WordCount = number of non-stopwords in Reddit comments 
+NegativityGI = number of negative words in Reddit comments that are in the GI negative dictionary / WordCount PositivityGI = number of negative words in Reddit comments that are in the GI positive dictionary / WordCount 
+SentimentGI = PositivityGI - NegativityGI = (# positive words - # negative words) / WordCount
+HE, LM, QDAP are similar
+
+When using Lexicoder, we calculate number of positive words = positive words - negated positive + negated negative number of negative words = negative words - negated negative + negated positive
+```{r}
+tokenized=quanteda::tokens_lookup(quanteda::tokens(filtered_comments$comment), dictionary=data_dictionary_LSD2015, exclusive=FALSE)
+sentiments$LCpos <- sapply(tokenized, function(x) sum(x=='POSITIVE') - sum(x=='NEG_POSITIVE') + sum(x=='NEG_NEGATIVE'))
+sentiments$LCneg <- sapply(tokenized, function(x) sum(x=='NEGATIVE') - sum(x=='NEG_NEGATIVE') + sum(x=='NEG_POSITIVE'))
+sentiments$LC <- (sentiments$LCpos-sentiments$LCneg)/sentiments$WordCount
+```
+
+```{r}
+vader_scores <- vader_df(filtered_comments$comment)
+sentiments$Vader <- vader_scores$compound
+```
+A rule-based sentiment analysis tool called Vader. Vader takes all of the lexical and grammatical features of the reddit comments and returns a continuous sentiment score between -1 (very negative) to 1 (very positive).
+To see how the dictionaries compare to each other:
+```{r}
+with(sentiments, ggpairs(data.frame(SentimentGI, SentimentHE, SentimentLM, 
+                                    SentimentQDAP, LC, Vader)))
+```
+On the graph below, the x-axis is the time and date Reddit comments were sent, and the y-axis is the sentiment of the reddit comments. Since the reddit comments used were gathered in the time span of a few minutes, we don’t expect to see any meaningful change in sentiment over time. Sentiment of reddit comments captured over days may tell a different story, especially if any good or bad news about the vaccine came out during that time frame.
+```{r}
+filtered_comments %<>%
+  separate(date, c("year","month","day"), sep = "-") 
+```
+
+```{r}
+ggplot(data=data.frame(time=filtered_comments$year, sentiment=sentiments$Vader), aes(x=time, y=sentiment)) + geom_point(alpha=.1) + geom_smooth() 
+```
+
+In the plot below, the shade of the point refers to how many reddit comments are at that location.
+```{r}
+ggplot(sentiments, aes(x=WordCount, y=Vader)) + geom_point(alpha=.1) + geom_smooth()
+```
+图中的阴影部分表示的是拟合线周围的置信区间
+这表明在高词数时对情感评分的预测不确定性较大。这可能是因为在高词数的数据点较少，或者数据变化较大。
