@@ -1,0 +1,16 @@
+```{r}
+csv_files <- list.files(pattern = "*.csv")
+temp <- read.csv("posts_ad_academia.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8")
+temp <- temp[-c(1:nrow(temp)), -1] 
+
+for (file in csv_files) {
+  temp_data <- read.csv(file)
+  temp <- rbind(temp_data,temp)
+}
+
+write.csv(temp , file = "all_posts.csv", row.names = FALSE)
+```
+
