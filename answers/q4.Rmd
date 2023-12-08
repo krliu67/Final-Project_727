@@ -1,0 +1,74 @@
+```{r, message = FALSE, warning = FALSE}
+library(xml2)
+library(rvest)
+library(tidyverse)
+library(jsonlite)
+library(robotstxt)
+library(RSocrata)
+library(dplyr)
+library(tidytext)
+library(tm)
+library(RedditExtractoR)
+library(stringr)
+library(magrittr)
+library(ggpubr)
+```
+
+(4) How the above changes differ between subreddits named after different races and parties?
+
+```{r}
+# load sm
+sentiments <- read.csv("../data/sentiments.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8")
+```
+
+```{r}
+# load comments
+
+comments <- read.csv("../data/scraped_comments_by_selected_posts.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8") %>% distinct()
+
+text_comments <- comments %>% dplyr::select(date,comment,url)
+
+irrelevantWords <- c("[deleted]","[removed]")
+
+filtered_comments <- text_comments %>% filter(comment != "[deleted]" & comment != "[removed]")
+```
+
+clean url to find their subreddits
+```{r}
+# matches <- filtered_comments$url %>% sub(".*/r/(.*)/comments/.*", "\\1")
+
+for (i in 1:dim(filtered_comments)[1]) {
+  temp_url <- filtered_comments$url[i]
+  temp_matches <- sub(".*/r/(.*)/comments/.*", "\\1", temp_url)
+  filtered_comments$subreddit[i] <- temp_matches
+}
+rm(temp_url)
+rm(temp_matches)
+```
+
+```{r}
+vaders_subreddit <- filtered_comments %>% dplyr::select(subreddit)
+
+vaders_subreddit <- cbind(vaders_subreddit, sentiments$Vader)
+
+colnames(vaders_subreddit) <- c("subreddit","vader")
+```
+
+```{r}
+vaders_by_subreddit <- vaders_subreddit %>% dplyr::group_by(subreddit) %>% dplyr::summarise(m = mean(vader),sd = sd(vader),min = min(vader),max = max(vader)) %>% data.frame()
+head(vaders_by_subreddit)
+``` 
+
+```{r}
+ggplot(vaders_subreddit, aes(x = subreddit, y = vader)) +
+  geom_boxplot() +
+  labs(title = "Box Plot", x = "subreddit", y = "vader") +
+  theme_minimal()
+```
+

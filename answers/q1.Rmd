@@ -1,0 +1,75 @@
+```{r, message = FALSE, warning = FALSE}
+library(xml2)
+library(rvest)
+library(tidyverse)
+library(jsonlite)
+library(robotstxt)
+library(RSocrata)
+library(dplyr)
+library(tidytext)
+library(tm)
+library(RedditExtractoR)
+library(stringr)
+library(magrittr)
+library(ggpubr)
+```
+
+
+(1) Did the Supreme Court's decision trigger increased discussions among Reddit users about race-based affirmative action in college admissions? In Other words, how did the daily number of comments related to this topic change following the decision's announcement?
+
+```{r}
+all_comments <- read.csv("../data/comments/all_comments.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8")
+
+all_comments$date <- as.Date(all_comments$date)
+
+irrelevantWords <- c("[deleted]","[removed]")
+
+filtered_comments <- all_comments %>% filter(comment != "[deleted]" & comment != "[removed]")
+```
+
+```{r}
+start_date <- as.Date("2015-05-15")
+end_date <- as.Date("2023-06-29")
+
+before <-  filtered_comments[filtered_comments$date >= start_date & filtered_comments$date < end_date, ]
+after <- filtered_comments[filtered_comments$date >= end_date, ]
+```
+
+
+```{r}
+before_count <- before %>% dplyr::group_by(date) %>%  dplyr::summarise(num = dplyr::n())
+after_count <- after %>% dplyr::group_by(date) %>%  dplyr::summarise(num = dplyr::n())
+```
+
+
+```{r}
+ggplot(data = before_count, mapping = aes(x = date, y = num, group = 1)) + geom_line() + xlab('Date') +ylab('Number of Comments')
+
+ggplot(data = after_count, mapping = aes(x = date, y = num, group = 1)) + geom_line() + xlab('Date') +ylab('Number of Comments')
+```
+
+
+```{r}
+y_limits <- range(c(after_count$num, before_count$num))
+
+p1 <- ggplot(data = after_count, mapping = aes(x = date, y = num, group = 1)) +
+  geom_line() +
+  ylim(y_limits) +
+  scale_x_date(date_breaks = "1 month", date_labels = "%Y-%m") + 
+  xlab('Date after Decision') +
+  ylab('Number of Comments')
+
+p2 <- ggplot(data = before_count, mapping = aes(x = date, y = num, group = 1)) +
+  geom_line() +
+  ylim(y_limits) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y-%m") + 
+  xlab('Date before Decision') +
+  ylab('Number of Comments')
+
+ggarrange(p2,p1,ncol=2,nrow=1)
+```
+
+

@@ -1,0 +1,139 @@
+```{r, message = FALSE, warning = FALSE}
+library(xml2)
+library(rvest)
+library(tidyverse)
+library(jsonlite)
+library(robotstxt)
+library(RSocrata)
+library(dplyr)
+library(tidytext)
+library(tm)
+library(RedditExtractoR)
+library(stringr)
+library(magrittr)
+library(ggpubr)
+library(plyr)
+```
+
+(3) What topics are of interest to individuals with varying emotional responses, i.e. which topics are associated with specific sentiments?
+
+```{r}
+# load sm
+sentiments <- read.csv("../data/sentiments.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8")
+```
+
+```{r}
+# load comments
+
+comments <- read.csv("../data/scraped_comments_by_selected_posts.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8") %>% distinct()
+
+text_comments <- comments %>% dplyr::select(date,comment,url)
+
+irrelevantWords <- c("[deleted]","[removed]")
+
+filtered_comments <- text_comments %>% filter(comment != "[deleted]" & comment != "[removed]")
+```
+
+```{r}
+# load selected posts
+selected_posts <- read.csv("../data/selected_posts.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8") %>% distinct()
+selected_posts <- selected_posts[!duplicated(selected_posts$url), ]
+```
+
+
+
+```{r}
+vaders_url <- filtered_comments %>% dplyr::select(url,comment)
+
+vaders_url <- cbind(vaders_url, sentiments$Vader)
+
+colnames(vaders_url) <- c("url","comment","vader")
+```
+
+```{r}
+vaders_url <- merge(vaders_url, selected_posts, by = "url", all.x = TRUE)
+```
+
+```{r}
+vaders_url <- vaders_url %>% dplyr::select(title_text,vader)
+
+vaders_by_title <- aggregate(vader ~ title_text, data = vaders_url, FUN = mean)
+head(vaders_by_title)
+```
+
+wordcloud + - 
+```{r}
+pos_title <- vaders_by_title %>% filter(vader > 0)
+
+texts <- as_tibble(data.frame(pos_title$title_text))
+
+stop_words <- stopwords("en")
+
+words <- texts %>%
+  unnest_tokens(word, pos_title.title_text)
+
+words <- words %>%
+  filter(!(word %in% stop_words))
+
+word_freq <- words %>%
+  dplyr::count(word, sort = TRUE) %>%
+  ungroup()
+
+wordcloud(words = word_freq$word, freq = word_freq$n, min.freq = 2,
+          scale = c(4, 0.1), max.words = 400, random.order = FALSE,
+          rot.per = 0.25, colors = brewer.pal(8, "Dark2"))
+```
+```{r}
+neg_title <- vaders_by_title %>% filter(vader < 0)
+
+texts <- as_tibble(data.frame(neg_title$title_text))
+
+stop_words <- stopwords("en")
+
+words <- texts %>%
+  unnest_tokens(word, neg_title.title_text)
+
+words <- words %>%
+  filter(!(word %in% stop_words))
+
+word_freq <- words %>%
+  dplyr::count(word, sort = TRUE) %>%
+  ungroup()
+
+wordcloud(words = word_freq$word, freq = word_freq$n, min.freq = 2,
+          scale = c(4, 0.1), max.words = 400, random.order = FALSE,
+          rot.per = 0.25, colors = brewer.pal(8, "Dark2"))
+```
+```{r}
+neu_title <- vaders_by_title %>% filter(vader == 0)
+
+texts <- as_tibble(data.frame(neu_title$title_text))
+
+stop_words <- stopwords("en")
+
+words <- texts %>%
+  unnest_tokens(word, neu_title.title_text)
+
+words <- words %>%
+  filter(!(word %in% stop_words))
+
+word_freq <- words %>%
+  dplyr::count(word, sort = TRUE) %>%
+  ungroup()
+
+wordcloud(words = word_freq$word, freq = word_freq$n, min.freq = 2,
+          scale = c(4, 0.1), max.words = 400, random.order = FALSE,
+          rot.per = 0.25, colors = brewer.pal(8, "Dark2"))
+
+```
+
+

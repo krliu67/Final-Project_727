@@ -1,0 +1,172 @@
+```{r, message = FALSE, warning = FALSE}
+library(xml2)
+library(rvest)
+library(tidyverse)
+library(jsonlite)
+library(robotstxt)
+library(RSocrata)
+library(dplyr)
+library(tidytext)
+library(tm)
+library(RedditExtractoR)
+library(stringr)
+library(magrittr)
+library(ggpubr)
+library(zoo)
+library(xts)
+```
+
+(2) How did people's sentimental tendencies shift before and after the announcement of the Supreme Court's decision?
+```{r}
+# load sm
+sentiments <- read.csv("../data/sentiments.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8")
+```
+
+```{r}
+# load comments
+
+comments <- read.csv("../data/scraped_comments_by_selected_posts.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8") %>% distinct()
+
+text_comments <- comments %>% dplyr::select(date,comment,url)
+
+irrelevantWords <- c("[deleted]","[removed]")
+
+filtered_comments <- text_comments %>% filter(comment != "[deleted]" & comment != "[removed]")
+```
+
+```{r}
+vaders_date <- filtered_comments %>% dplyr::select(date,url)
+
+vaders_date <- cbind(vaders_date,sentiments$Vader)
+
+colnames(vaders_date) <- c("date","url","vader")
+```
+
+A rule-based sentiment analysis tool called Vader. Vader takes all of the lexical and grammatical features of the reddit comments and returns a continuous sentiment score between -1 (very negative) to 1 (very positive).
+```{r}
+vaders_by_date <-vaders_date %>%  dplyr::group_by(date) %>% dplyr::summarise(m = mean(vader)) %>% data.frame()
+vaders_by_date$date <- as.Date(vaders_by_date$date)
+head(vaders_by_date)
+``` 
+```{r}
+start_date <- as.Date("2015-05-15")
+end_date <- as.Date("2023-06-29")
+
+vaders_by_date_before <- vaders_by_date[vaders_by_date$date >= start_date & vaders_by_date$date < end_date, ]
+
+vaders_by_date_after <- vaders_by_date[vaders_by_date$date >= end_date, ]
+```
+
+```{r}
+p1 <- ggplot(data =vaders_by_date_before, aes(x = date, y = m)) +geom_line() + geom_point() + theme_bw() + xlab('Date before Decision') +
+  ylab('Mean of Sentiment Scores in one day')
+
+p2 <- ggplot(data =vaders_by_date_after, aes(x = date, y = m)) +geom_line() + geom_point() + theme_bw() + xlab('Date after Decision') +
+  ylab('Mean of Sentiment Scores in one day')
+
+ggarrange(p1,p2,ncol=2,nrow=1)
+```
+N-days mean
+```{r}
+ts_vaders_by_date_before <- xts(vaders_by_date_before$m, order.by = vaders_by_date_before$date)
+
+rolling_mean_vaders_by_date_before <- rollapply(ts_vaders_by_date_before, width = 5, FUN = mean, by = 5, align = 'right', na.rm = TRUE)
+
+df_vaders_by_date_before <- data.frame(date = index(rolling_mean_vaders_by_date_before), mean_value = coredata(rolling_mean_vaders_by_date_before))
+
+df_vaders_by_date_before <- df_vaders_by_date_before %>% na.omit()
+
+
+ts_vaders_by_date_after <- xts(vaders_by_date_after$m, order.by = vaders_by_date_after$date)
+
+rolling_mean_vaders_by_date_after <- rollapply(ts_vaders_by_date_after, width = 3, FUN = mean, by = 3, align = 'right', na.rm = TRUE)
+
+df_vaders_by_date_after <- data.frame(date = index(rolling_mean_vaders_by_date_after), mean_value = coredata(rolling_mean_vaders_by_date_after))
+
+df_vaders_by_date_after <- df_vaders_by_date_after %>% na.omit()
+```
+
+```{r}
+y_limits <- range(c(df_vaders_by_date_after$mean_value, df_vaders_by_date_before$mean_value))
+
+p3 <- ggplot(df_vaders_by_date_before, aes(x = date, y = mean_value)) +
+  geom_line() +
+  ylim(y_limits) +
+  theme_minimal() +
+  labs(title = "5-Day Rolling Mean of Time Series", x = "Date before Decision", y = "Mean Sentiment Scores")
+
+p4 <- ggplot(df_vaders_by_date_after, aes(x = date, y = mean_value)) +
+  geom_line() +
+  ylim(y_limits) +
+  theme_minimal() +
+  labs(title = "3-Day Rolling Mean of Time Series", x = "Date after Decision", y = "Mean Sentiment Scores")
+```
+
+
+```{r}
+ggarrange(p3,p4,ncol=2,nrow=1)
+```
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+ggplot(data = vaders_by_date_before, mapping = aes(x = date, y = m, group = 1)) +
+  geom_line() +
+  scale_x_date(date_breaks = "1 day", date_labels = "%Y-%m-%d") + 
+  xlab('Date before Decision') +
+  ylab('Mean of Sentiment Scores in one day')
+```
+
+
+Clustered by subreddit?
+
+```{r}
+for (i in 1:dim(filtered_comments)[1]) {
+  temp_url <- filtered_comments$url[i]
+  temp_matches <- sub(".*/r/(.*)/comments/.*", "\\1", temp_url)
+  filtered_comments$subreddit[i] <- temp_matches
+}
+rm(temp_url)
+rm(temp_matches)
+```
+
+```{r}
+vaders_by_date_by_subreddit <- filtered_comments %>% dplyr::select(subreddit,date)
+
+vaders_by_date_by_subreddit <- cbind(vaders_by_date_by_subreddit, sentiments$Vader)
+
+colnames(vaders_by_date_by_subreddit) <- c("subreddit","date","vader")
+
+vaders_by_date_by_subreddit$date <- as.Date(vaders_by_date_by_subreddit$date)
+```
+
+```{r}
+start_date <- as.Date("2015-05-15")
+# end_date <- as.Date("2023-06-29")
+
+# vaders_by_date_by_subreddit <- vaders_by_date_by_subreddit[vaders_by_date_by_subreddit$date >= start_date & vaders_by_date_by_subreddit$date <= end_date, ]
+vaders_by_date_by_subreddit <- vaders_by_date_by_subreddit[vaders_by_date_by_subreddit$date >= start_date, ]
+```
+
+```{r}
+p <- ggplot(data = vaders_by_date_by_subreddit, mapping = aes(x = date, y = vader, color = subreddit)) +
+  geom_line(data = vaders_by_date_by_subreddit %>% group_by(subreddit) %>% mutate(vader = rollmean(vader, 15, align = "left",fill =NA))) +
+  scale_x_date(date_breaks = "6 month", date_labels = "%Y-%B") + 
+  xlab('Date') +
+  ylab('Vader')
+```
+
