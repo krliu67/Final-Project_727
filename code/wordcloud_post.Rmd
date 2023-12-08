@@ -1,0 +1,39 @@
+```{r}
+library(wordcloud)
+library(tidytext)
+library(tm)
+library(RColorBrewer)
+library(dplyr)
+```
+
+```{r}
+posts <- read.csv("../data/selected_posts.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8") %>% distinct()
+```
+
+```{r}
+
+texts <- as_tibble(data.frame(posts$title_text))
+
+stop_words <- stopwords("en")
+
+words <- texts %>%
+  unnest_tokens(word, posts.title_text)
+
+words <- words %>%
+  filter(!(word %in% stop_words))
+```
+
+
+```{r}
+word_freq <- words %>%
+  dplyr::count(word, sort = TRUE) %>%
+  ungroup()
+
+wordcloud(words = word_freq$word, freq = word_freq$n, min.freq = 2,
+          scale = c(4, 0.1), max.words = 400, random.order = FALSE,
+          rot.per = 0.25, colors = brewer.pal(8, "Dark2"))
+```
+

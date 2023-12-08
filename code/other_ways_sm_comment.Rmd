@@ -1,0 +1,95 @@
+```{r}
+library(text2vec)
+library(tm)
+library(Matrix)
+library(xml2)
+library(rvest)
+library(tidyverse)
+library(jsonlite)
+library(robotstxt)
+library(RSocrata)
+library(dplyr)
+library(tidytext)
+library(tm)
+library(RedditExtractoR)
+library(stringr)
+library(magrittr)
+library(ggpubr)
+library(zoo)
+library(quanteda)
+library(topicmodels)
+library(tidyverse)
+library(reshape2)
+library(ggplot2)
+library(pals)
+library(Rtsne)
+library(tokenizers)
+library(syuzhet)
+```
+
+```{r}
+# load comments
+comments <- read.csv("../data/scraped_comments_by_selected_posts.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8") %>% distinct()
+
+text_comments <- comments %>% dplyr::select(date,comment,url)
+
+irrelevantWords <- c("[deleted]","[removed]")
+
+filtered_comments <- text_comments %>% filter(comment != "[deleted]" & comment != "[removed]")
+```
+
+```{r}
+textdata <- filtered_comments
+```
+
+```{r}
+df_tidy <- textdata %>%
+  unnest_tokens(word, comment)
+```
+three different dicts to analysis sentiment
+```{r}
+df_sentiment_afinn <- df_tidy %>%
+  inner_join(get_sentiments("afinn"))
+
+df_sentiment_bing <- df_tidy %>%
+  inner_join(get_sentiments("bing"))
+
+df_sentiment_loughran <- df_tidy %>%
+  inner_join(get_sentiments("loughran"))
+
+df_sentiment_nrc <- df_tidy %>%
+  inner_join(get_sentiments("nrc"))
+
+# get_sentiments(lexicon = c("bing", "afinn", "loughran", "nrc"))
+```
+
+```{r}
+df_comment_sentiment_afinn <- df_sentiment_afinn %>%
+  dplyr::group_by(url) %>%
+  dplyr::summarize(total_sentiment = sum(value), mean_sentiment = mean(value))
+head(df_comment_sentiment_afinn)
+```
+
+```{r}
+MannKendall(df_comment_sentiment_afinn$mean_sentiment)
+```
+```{r}
+sole_date_url <- filtered_comments %>% distinct(url,date) 
+sole_date_url$date <- as.Date(sole_date_url$date)
+
+after_affin <- sole_date_url %>% filter(date >= as.Date("2023-06-29"))
+after_affin <- after_affin %>% inner_join(df_comment_sentiment_afinn) %>% arrange(date)
+after_affin <- after_affin %>% distinct(url,date,mean_sentiment)
+MannKendall(after_affin$mean_sentiment)
+```
+
+```{r}
+before_affin <- sole_date_url %>% filter(date > as.Date("2015-05-15") & date <= as.Date("2023-06-29"))
+before_affin <- before_affin %>% inner_join(df_comment_sentiment_afinn) %>% arrange(date)
+before_affin <- before_affin %>% distinct(url,date,mean_sentiment)
+MannKendall(before_affin$mean_sentiment)
+```
+

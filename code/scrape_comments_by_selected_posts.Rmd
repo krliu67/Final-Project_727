@@ -1,0 +1,47 @@
+
+```{r, message = FALSE}
+library(xml2)
+library(rvest)
+library(tidyverse)
+library(jsonlite)
+library(robotstxt)
+library(RSocrata)
+library(dplyr)
+library(tidytext)
+library(tm)
+library(tidytext)
+library(RedditExtractoR)
+library(stringr)
+```
+
+```{r}
+selected_posts <- read.csv("../data/selected_posts.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8") %>% distinct()
+```
+
+
+```{r}
+### named it casually here, mainly to get the first row of data
+temp_threads_contents <- get_thread_content("https://www.reddit.com/r/news/comments/14m61u8/supreme_court_rules_against_affirmative_action/")
+temp <- temp_threads_contents$comments[1,]
+scraped_comments_by_selected_posts <- temp
+scraped_comments_by_selected_posts <- scraped_comments_by_selected_posts[-c(1:nrow(scraped_comments_by_selected_posts)), -1] 
+```
+
+Loops for comments
+```{r}
+for (i in 1:dim(selected_posts)[1]) {
+  temp_threads_contents <- get_thread_content(selected_posts$url[i])
+  scraped_comments_by_selected_posts <- rbind(scraped_comments_by_selected_posts,temp_threads_contents$comments)
+}
+```
+
+```{r}
+scraped_comments_by_selected_posts <- scraped_comments_by_selected_posts %>% distinct()
+
+# scraped_comments_by_selected_posts <- scraped_comments_by_selected_posts %>% distinct()
+write.csv(scraped_comments_by_selected_posts,file = "data/scraped_comments_by_selected_posts.csv", row.names = FALSE)
+```
+

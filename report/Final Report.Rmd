@@ -1,0 +1,66 @@
+---
+title: " "
+subtitle: "Final Project for SURV/SURVMETH 727"
+author: "Chloe Chen & Kangrui Liu"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: TRUE
+    df_print: kable
+bibliography: references.bib
+csl: american-sociological-association.csl
+header-includes:
+   - \usepackage{dcolumn} 
+
+---
+
+```{r setup, include=FALSE, tidy=TRUE}
+knitr::opts_chunk$set(echo=TRUE,cache=TRUE, 
+                      autodep=TRUE, cache.comments=FALSE,
+                      message=FALSE, warning=FALSE,
+                      fig.width=4.5, fig.height=3)
+```
+
+```{r, include = FALSE}
+
+```
+
+## Introduction
+
+
+## Data
+
+### Reddit Data
+
+
+
+### Twitter Data
+
+## Results
+
+
+### Data exploration
+
+#### Clean up raw data
+
+
+
+### Analysis
+
+#### Get Sentiment Polarity
+
+
+#### Sentiment Across Groups
+
+
+## Discussion
+
+
+## References
+
+\linespread{1}
+
+
+::: {#refs}
+
+:::

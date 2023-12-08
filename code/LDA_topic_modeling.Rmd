@@ -1,0 +1,127 @@
+```{r}
+library(quanteda)
+library(topicmodels)
+library(tidyverse)
+library(reshape2)
+library(ggplot2)
+library(pals)
+```
+
+```{r}
+textdata <- read.csv("data/posts/all_posts.csv",
+                     header = TRUE,
+                     # sep = ";",
+                     encoding = "UTF-8") %>% distinct()
+textdata$title_text <- paste(textdata$title, textdata$text, sep = "--")
+
+# textdata <- read.csv("data/comments/all_comments.csv",
+#                      header = TRUE,
+#                      # sep = ";",
+#                      encoding = "UTF-8")
+# irrelevantWords <- c("[deleted]","[removed]")
+# 
+# textdata <- textdata %>% filter(comment != "[deleted]" & comment != "[removed]")
+```
+
+```{r}
+# create a corpus (text with metadata information)
+corpus_textdata_orig <- corpus(textdata, 
+                                     text_field = "title_text")
+
+# Tokenization
+corpus_textdata_proc <- tokens(corpus_textdata_orig, 
+                           remove_punct = TRUE, # remove punctuation
+                           remove_numbers = TRUE, # remove numbers
+                           remove_symbols = TRUE) %>% # remove symbols (for social media data, could remove everything except letters)
+                        tokens_tolower() # remove capitalization
+
+corpus_textdata_proc <- corpus_textdata_proc %>%
+                             tokens_remove(stopwords("english")) %>%
+                             tokens_remove(c("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z")) %>%
+                             tokens_ngrams(1) 
+```
+
+```{r}
+#  Create dtm: a document-feature matrix
+DTM <- dfm(corpus_textdata_proc)
+
+# # Minimum
+# minimumFrequency <- 10
+# DTM <- dfm_trim(DTM, 
+#                 min_docfreq = minimumFrequency,
+#                 max_docfreq = Inf)
+
+# keep only letters... brute force
+DTM  <- dfm_select(DTM, 
+                   pattern = "[a-z]", 
+                   valuetype = "regex", 
+                   selection = 'keep')
+colnames(DTM) <- stringi::stri_replace_all_regex(colnames(DTM), 
+                                                 "[^_a-z]","")
+
+DTM <- dfm_compress(DTM)#dfm_compress(DTM,"feature")
+
+# We have several rows which do not have any content left. Drop them.
+
+sel_idx <- rowSums(DTM) > 0
+DTM <- DTM[sel_idx, ]
+textdata <- textdata[sel_idx, ]
+```
+
+```{r}
+K <- 30
+# Set seed to make results reproducible
+set.seed(6677)
+# topicModel <- LDA(DTM, 
+#                   K, 
+#                   method="VEM")
+topicModel <- LDA(DTM,
+                  K,
+                  method="Gibbs",
+                  control=list(iter = 800,
+                               verbose = 10,
+                               alpha = 3.5))
+
+tmResult <- posterior(topicModel)
+
+# Topics are distributions over the entire vocabulary
+
+beta <- tmResult$terms
+# glimpse(beta)             
+
+# Each doc has a distribution over k topics
+
+theta <- tmResult$topics
+# glimpse(theta)               
+
+# terms(topicModel, 10)
+
+# Top terms per topic. Use top 5 to interpret topics
+top5termsPerTopic <- terms(topicModel, 
+                           5)
+# For the next steps, we want to give the topics more descriptive names than just numbers. Therefore, we simply concatenate the five most likely terms of each topic to a string that represents a pseudo-name for each topic.
+topicNames <- apply(top5termsPerTopic, 
+                    2, 
+                    paste, 
+                    collapse=" ")
+
+topicProportions <- colSums(theta) / nrow(DTM)  # average probability over all paragraphs
+names(topicProportions) <- topicNames     # Topic Names
+sort(topicProportions, decreasing = TRUE) # sort
+```
+
+```{r}
+score_texts <- as.data.frame(theta,row.names = FALSE)
+textdata$topic_number <- apply(score_texts, 1, which.max)
+(allTopicNames <- terms(topicModel, 10) %>% apply(2, paste, collapse=" ") %>% as.data.frame())
+```
+```{r}
+# choose 2,3,4,5,6,8,12,13,14,16,19,20,22,23,24
+selected_posts <- textdata %>% filter(topic_number %in% c(2,3,4,5,6,8,12,13,14,16,19,20,22,23,24)) %>% distinct()
+```
+
+```{r}
+# write.csv(selected_text,file = "data/selected_text.csv", row.names = FALSE)
+write.csv(selected_posts,file = "data/selected_posts.csv", row.names = FALSE) #660
+```
+

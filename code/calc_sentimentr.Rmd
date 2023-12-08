@@ -1,0 +1,58 @@
+```{r}
+library(sentimentr)
+library(xml2)
+library(rvest)
+library(tidyverse)
+library(jsonlite)
+library(robotstxt)
+library(RSocrata)
+library(dplyr)
+library(tidytext)
+library(tm)
+library(RedditExtractoR)
+library(stringr)
+library(magrittr)
+library(ggpubr)
+library(zoo)
+```
+
+```{r}
+# load comments
+
+comments <- read.csv("../data/scraped_comments_by_selected_posts.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8") %>% distinct()
+
+text_comments <- comments %>% dplyr::select(date,comment,url)
+
+irrelevantWords <- c("[deleted]","[removed]")
+
+filtered_comments <- text_comments %>% filter(comment != "[deleted]" & comment != "[removed]")
+```
+
+```{r}
+sentiment_scores <- sentiment(filtered_comments$comment)
+
+avg_sentiment_scores <- by(sentiment_scores, sentiment_scores$element_id, function(x) mean(x$sentiment))
+sentiment_wordcount <- by(sentiment_scores, sentiment_scores$element_id, function(x) sum(x$word_count))
+
+filtered_comments$sentiment_score <- unname(sapply(avg_sentiment_scores, function(x) x))
+```
+
+```{r}
+filtered_comments$date <- as.Date(filtered_comments$date)
+
+start_date <- as.Date("2015-05-15")
+
+sentimentr_by_date <- filtered_comments
+
+sentimentr_by_date <- sentimentr_by_date[sentimentr_by_date$date >= start_date, ]
+
+ggplot(data = sentimentr_by_date, mapping = aes(x = date, y = sentiment_score)) +
+  geom_line(data = sentimentr_by_date %>% mutate(sentiment_score = rollmean(sentiment_score, 15, align = "left",fill =NA))) +
+  scale_x_date(date_breaks = "6 month", date_labels = "%Y-%B") + 
+  xlab('Date') +
+  ylab('Sentimentr')
+```
+

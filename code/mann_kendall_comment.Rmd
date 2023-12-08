@@ -1,0 +1,108 @@
+```{r, message = FALSE, warning = FALSE}
+library(xml2)
+library(rvest)
+library(tidyverse)
+library(jsonlite)
+library(robotstxt)
+library(RSocrata)
+library(dplyr)
+library(tidytext)
+library(tm)
+library(RedditExtractoR)
+library(stringr)
+library(magrittr)
+library(ggpubr)
+library(zoo)
+library(Kendall)
+```
+
+employ the Mann-Kendall trend test to examine whether there is a monotonic trend in the sentiment change over time (cut the time period) 
+
+
+```{r}
+# load sm
+sentiments <- read.csv("../data/sentiments.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8")
+```
+
+```{r}
+# load comments
+
+comments <- read.csv("../data/scraped_comments_by_selected_posts.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8") %>% distinct()
+
+text_comments <- comments %>% dplyr::select(date,comment,url)
+
+irrelevantWords <- c("[deleted]","[removed]")
+
+filtered_comments <- text_comments %>% filter(comment != "[deleted]" & comment != "[removed]")
+```
+
+```{r}
+# matches <- filtered_comments$url %>% sub(".*/r/(.*)/comments/.*", "\\1")
+
+for (i in 1:dim(filtered_comments)[1]) {
+  temp_url <- filtered_comments$url[i]
+  temp_matches <- sub(".*/r/(.*)/comments/.*", "\\1", temp_url)
+  filtered_comments$subreddit[i] <- temp_matches
+}
+rm(temp_url)
+rm(temp_matches)
+```
+
+```{r}
+vaders_date <- filtered_comments %>% dplyr::select(date,url,subreddit)
+
+vaders_date <- cbind(vaders_date,sentiments$Vader)
+
+colnames(vaders_date) <- c("date","url","subreddit","vader")
+```
+
+A rule-based sentiment analysis tool called Vader. Vader takes all of the lexical and grammatical features of the reddit comments and returns a continuous sentiment score between -1 (very negative) to 1 (very positive).
+```{r}
+vaders_by_date <-vaders_date %>%  dplyr::group_by(date) %>% dplyr::summarise(m = mean(vader)) %>% data.frame()
+vaders_by_date$date <- as.Date(vaders_by_date$date)
+head(vaders_by_date)
+``` 
+
+```{r}
+start_date <- as.Date("2015-05-15")
+end_date <- as.Date("2023-06-29")
+
+vaders_by_date_before <- vaders_by_date[vaders_by_date$date >= start_date & vaders_by_date$date < end_date, ]
+
+vaders_by_date_after <- vaders_by_date[vaders_by_date$date >= end_date, ]
+```
+
+```{r}
+(result <- MannKendall(vaders_by_date$m))
+```
+
+```{r}
+plot(vaders_by_date$date, vaders_by_date$m, type="b", main="Sentiment Over Time", xlab="Time", ylab="Sentiment")
+```
+
+```{r}
+
+MannKendall(vaders_by_date_after$m)
+
+MannKendall(vaders_by_date_before$m)
+```
+by subreddit
+```{r}
+# academia asianamerican blackladies education Harvard law news politics Republican WhitePeopleTwitter
+temp <- vaders_date %>% filter(subreddit == "WhitePeopleTwitter") %>% dplyr::group_by(date) %>% dplyr::summarise(m = mean(vader))
+temp$date <- as.Date(temp$date)
+temp_before <- temp[temp$date >= start_date & temp$date < end_date, ]
+temp_after <- temp[temp$date >= end_date, ]
+
+plot(temp$date, temp$m, type="b", main="Sentiment Over Time", xlab="Time", ylab="Sentiment")
+
+MannKendall(temp_before$m)
+MannKendall(temp_after$m)
+```
+
