@@ -1,6 +1,6 @@
 ---
-title: " "
-subtitle: "Final Project for SURV/SURVMETH 727"
+title: "A Content Analysis of Reddit User's Response Towards Students for Fair Admissions v. Harvard"
+subtitle: "Term paper for SURV/SURVMETH 727"
 author: "Chloe Chen & Kangrui Liu"
 date: "`r Sys.Date()`"
 output:
@@ -21,10 +21,61 @@ knitr::opts_chunk$set(echo=TRUE,cache=TRUE,
                       fig.width=4.5, fig.height=3)
 ```
 
-```{r, include = FALSE}
-
+```{r, message = FALSE, warning = FALSE}
+# load packages
+library(xml2)
+library(rvest)
+library(tidyverse)
+library(jsonlite)
+library(robotstxt)
+library(RSocrata)
+library(dplyr)
+library(tidytext)
+library(tm)
+library(RedditExtractoR)
+library(stringr)
+library(magrittr)
+library(ggpubr)
+library(zoo)
+library(xts)
+library(quanteda)
+library(SentimentAnalysis)
+library(vader)
+library(GGally)
+library(magrittr)
+library(dplyr)
 ```
 
+```{r, include = FALSE}
+posts <- read.csv("../data/selected_posts.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8") %>% distinct()
+```
+
+
+```{r, include = FALSE}
+# load comments
+
+comments <- read.csv("../data/scraped_comments_by_selected_posts.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8") %>% distinct()
+
+text_comments <- comments %>% dplyr::select(date,comment,url)
+
+irrelevantWords <- c("[deleted]","[removed]")
+
+filtered_comments <- text_comments %>% filter(comment != "[deleted]" & comment != "[removed]")
+```
+
+```{r, include = FALSE}
+# load sm
+sentiments <- read.csv("../data/sentiments.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8")
+```
 ## Introduction
 
 
