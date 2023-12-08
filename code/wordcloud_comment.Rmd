@@ -7,7 +7,12 @@ library(dplyr)
 ```
 
 ```{r}
-comments <- read.csv("../data/scraped_comments_by_selected_posts.csv", 
+# comments <- read.csv("data/scraped_comment.csv", 
+#                      header = TRUE, 
+#                      # sep = ";", 
+#                      encoding = "UTF-8") %>% distinct()
+
+comments <- read.csv("data/scraped_comments_by_selected_posts.csv", 
                      header = TRUE, 
                      # sep = ";", 
                      encoding = "UTF-8") %>% distinct()
@@ -39,20 +44,20 @@ words <- words %>%
 ```
 
 
-```{r}
+```{r, warning=FALSE}
 word_freq <- words %>%
   dplyr::count(word, sort = TRUE) %>%
   ungroup()
 word_freq <- word_freq %>% filter(!grepl("^[A-Za-z]$", word))
 
 wordcloud(words = word_freq$word, freq = word_freq$n, min.freq = 2,
-          scale = c(4, 0.2), max.words = 400, random.order = TRUE,
+          scale = c(4, 0.1), max.words = 1000, random.order = TRUE,
           rot.per = 0.5, colors = rainbow(6))
 ```
 
 ```{r}
 # load sm
-sentiments <- read.csv("../data/sentiments.csv", 
+sentiments <- read.csv("data/sentiments.csv", 
                      header = TRUE, 
                      # sep = ";", 
                      encoding = "UTF-8")
@@ -67,7 +72,7 @@ vaders_comments <- cbind(vaders_comments, sentiments$Vader)
 
 colnames(vaders_comments) <- c("comment","vader")
 ```
-positive comments
+
 ```{r}
 pos_comments <- vaders_comments %>% filter(vader > 0)
 
@@ -81,17 +86,17 @@ words <- texts %>%
 words <- words %>%
   filter(!(word %in% stop_words))
 
-word_freq <- words %>%
+word_freq_pos <- words %>%
   dplyr::count(word, sort = TRUE) %>%
   ungroup()
 
-word_freq <- word_freq %>% filter(!grepl("^[A-Za-z]$", word))
+word_freq_pos <- word_freq_pos %>% filter(!grepl("^[A-Za-z]$", word))
 
-wordcloud(words = word_freq$word, freq = word_freq$n, min.freq = 2,
+wordcloud(words = word_freq_pos$word, freq = word_freq_pos$n, min.freq = 2,
           scale = c(4, 0.2), max.words = 400, random.order = TRUE,
           rot.per = 0.5,  colors = rainbow(6))
 ```
-negative comments
+
 ```{r}
 neg_comments <- vaders_comments %>% filter(vader < 0)
 
@@ -105,17 +110,16 @@ words <- texts %>%
 words <- words %>%
   filter(!(word %in% stop_words))
 
-word_freq <- words %>%
+word_freq_neg <- words %>%
   dplyr::count(word, sort = TRUE) %>%
   ungroup()
 
-word_freq <- word_freq %>% filter(!grepl("^[A-Za-z]$", word))
+word_freq_neg <- word_freq_neg %>% filter(!grepl("^[A-Za-z]$", word))
 
-wordcloud(words = word_freq$word, freq = word_freq$n, min.freq = 2,
+wordcloud(words = word_freq_neg$word, freq = word_freq_neg$n, min.freq = 2,
           scale = c(4, 0.2), max.words = 400, random.order = TRUE,
           rot.per = 0.5, colors = rainbow(6))
 ```
-neutral comments
 ```{r}
 neu_comments <- vaders_comments %>% filter(vader == 0)
 
@@ -138,5 +142,24 @@ word_freq <- word_freq %>% filter(!grepl("^[A-Za-z]$", word))
 wordcloud(words = word_freq$word, freq = word_freq$n, min.freq = 2,
           scale = c(4, 0.1), max.words = 400, random.order = FALSE,
           rot.per = 0.5, colors = rainbow(6))
+```
+
+```{r, warning=FALSE}
+common_words_pos <- intersect(word_freq_pos[1:100,1],word_freq[1:100,1])
+
+common_words_neg <- intersect(word_freq_neg[1:100,1],word_freq[1:100,1])
+
+word_freq_pos <- word_freq_pos[!word_freq_pos$word %in% common_words_pos$word, ]
+
+wordcloud(words = word_freq_pos$word, freq = word_freq_pos$n, min.freq = 2,
+          scale = c(4, 0.1), max.words = 1000, random.order = TRUE,
+          rot.per = 0.5,  colors = rainbow(6))
+
+word_freq_neg <- word_freq_neg[!word_freq_neg$word %in% common_words_neg$word, ]
+
+wordcloud(words = word_freq_neg$word, freq = word_freq_neg$n, min.freq = 2,
+          scale = c(4, 0.1), max.words = 1000, random.order = TRUE,
+          rot.per = 0.5, colors = rainbow(6))
+
 ```
 
