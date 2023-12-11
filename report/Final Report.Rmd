@@ -24,6 +24,8 @@ knitr::opts_chunk$set(echo=TRUE,cache=TRUE,
 ```{r, message = FALSE, warning = FALSE, include=FALSE}
 # load packages
 library(xml2)
+library(rmarkdown)
+library(pandoc)
 library(rvest)
 library(tidyverse)
 library(jsonlite)
@@ -54,12 +56,11 @@ library(png)
 ```
 
 ```{r, include = FALSE}
-posts <- read.csv("../data/selected_posts.csv", 
+posts <- read.csv("data/selected_posts.csv", 
                      header = TRUE, 
                      # sep = ";", 
                      encoding = "UTF-8") %>% distinct()
 ```
-
 
 ```{r, include = FALSE}
 # load comments
@@ -85,7 +86,8 @@ sentiments <- read.csv("../data/sentiments.csv",
 ```
 
 ```{r, include = FALSE}
-all_comments <- read.csv("../data/comments/all_comments.csv", 
+all_comments <- read.csv("../data/comments/all_comments.csv",
+# all_comments <- read.csv("data/all_comments.csv", 
                      header = TRUE, 
                      # sep = ";", 
                      encoding = "UTF-8")
@@ -97,15 +99,17 @@ irrelevantWords <- c("[deleted]","[removed]")
 filtered_all_comments <- all_comments %>% filter(comment != "[deleted]" & comment != "[removed]")
 ```
 
-# Abstract
+## Abstract
 
 This study investigates public sentiment and discourse on Reddit regarding the landmark Supreme Court decision in Students for Fair Admissions v. Harvard, which ruled race-based affirmative action in college admissions unconstitutional. Our research aims to understand the impact of this decision on public opinion, particularly among Reddit users. The study focuses on three key questions: 1) Did the Supreme Court's decision incite increased discussion about race-based affirmative action among Reddit users? 2) How did public sentiment change over this period, particularly before and after the Supreme Court's decision? 3) What specific topics dominated these discussions? To answer these questions, we collected data from Reddit comments, employed the Latent Dirichlet Allocation (LDA) model for content filtering and sentiment analysis, supplemented by time series analysis to track sentiment changes. We also analyzed word frequencies to understand the focus of discussions. Our findings indicate a noticeable increase in discussions about affirmative action on Reddit following the Supreme Court decision. The overall sentiment trended negatively over time, suggesting growing public disapproval of affirmative action policies on the platform. Word frequency calculations reveal "Asian" as a predominant focus in the debate, with differing emotional tones in discussions about different racial groups.
 
+**GitHub Link**: <https://github.com/krliu67/Final-Project_727.git/>
+
 ## Introduction
 
-Students for Fair Admissions v. Harvard is a landmark decision of the Supreme Court of the United States, in which the court determined that race-based affirmative action in college admissions violates the Fourteenth Amendment's Equal Protection Clause on 29th June, 2023 (Totenberg, 2023). This ruling barred all public and private colleges from considering race in admissions decisions, significantly changing the landscape of affirmative action in higher education, reflecting the deep divide and ongoing controversy over these policies. The case began in 2013 when Students for Fair Admissions (SFFA) filed a lawsuit against Harvard University. SFFA claimed that Harvard's admissions practices violated Title VI of the Civil Rights Act of 1964 by discriminating against Asian Americans​. In 2017, under the Trump administration, the Department of Justice opened an investigation into the allegations against Harvard's policies​. The case reached the Supreme Court, and on June 29, 2023, the Supreme Court issued a decision by a vote of 6-2 that reversed the lower court's ruling and held that affirmative action in college admissions is unconstitutional​ (Chamberlain, 2023; Deliso, 2023). 
+Students for Fair Admissions v. Harvard is a landmark decision of the Supreme Court of the United States, in which the court determined that race-based affirmative action in college admissions violates the Fourteenth Amendment's Equal Protection Clause on 29th June, 2023 (Totenberg, 2023). This ruling barred all public and private colleges from considering race in admissions decisions, significantly changing the landscape of affirmative action in higher education, reflecting the deep divide and ongoing controversy over these policies. The case began in 2013 when Students for Fair Admissions (SFFA) filed a lawsuit against Harvard University. SFFA claimed that Harvard's admissions practices violated Title VI of the Civil Rights Act of 1964 by discriminating against Asian Americans​. In 2017, under the Trump administration, the Department of Justice opened an investigation into the allegations against Harvard's policies​. The case reached the Supreme Court, and on June 29, 2023, the Supreme Court issued a decision by a vote of 6-2 that reversed the lower court's ruling and held that affirmative action in college admissions is unconstitutional[@Chamberlain2023].
 
-The debated focus in this case is “affirmative action”, which has long been a controversial and often poorly understood policy (Crosby et al., 2006). Affirmative action refers to policies that support members of disadvantaged groups that have previously suffered discrimination in areas such as education and employment. In the United States, affirmative action typically involves measures to improve the opportunities for historically excluded groups, particularly racial minorities, which can include setting goals for inclusion, outreach efforts, and in some cases, considering race or gender as one factor in university admissions or hiring processes (Rubenfeld, 1997). The concept is controversial for several reasons. Firstly, critics argue that it can undermine the principles of meritocracy and fairness, as it may give less qualified candidates an advantage over more qualified candidates due to their race or gender. It can also lead to reverse discrimination, where members of a majority group feel they are being unfairly discriminated against in favor of minority groups. Besides, there is a concern that affirmative action can stigmatize beneficiaries, making it seem that they cannot succeed without special treatment, which can be detrimental to their self-esteem and societal views of their capabilities (Skrentny, 2018). Further, the debate often centers around whether the focus should be on equality of opportunity (not discriminating and allowing everyone an equal chance) or equality of outcome (actively working to ensure that groups that have been historically disadvantaged are represented proportionally) (Fryer & Loury, 2005).
+The debated focus in this case is “affirmative action”, which has long been a controversial and often poorly understood policy[@Crosby2006]. Affirmative action refers to policies that support members of disadvantaged groups that have previously suffered discrimination in areas such as education and employment. In the United States, affirmative action typically involves measures to improve the opportunities for historically excluded groups, particularly racial minorities, which can include setting goals for inclusion, outreach efforts, and in some cases, considering race or gender as one factor in university admissions or hiring processes[@Rubenfeld1997]. The concept is controversial for several reasons. Firstly, critics argue that it can undermine the principles of meritocracy and fairness, as it may give less qualified candidates an advantage over more qualified candidates due to their race or gender. It can also lead to reverse discrimination, where members of a majority group feel they are being unfairly discriminated against in favor of minority groups. Besides, there is a concern that affirmative action can stigmatize beneficiaries, making it seem that they cannot succeed without special treatment, which can be detrimental to their self-esteem and societal views of their capabilities[@Skrentny2018]. Further, the debate often centers around whether the focus should be on equality of opportunity (not discriminating and allowing everyone an equal chance) or equality of outcome (actively working to ensure that groups that have been historically disadvantaged are represented proportionally)[@Fryer2005].
 
 Therefore, studying public opinion towards Students for Fair Admissions v. Harvard, particularly the Supreme Court's decision, is of paramount importance. It offers a comprehensive perspective on the attitudes of various stakeholders towards the policy. This analysis can hopefully reflect the role that the policy plays in contemporary American society, and yield insights for policy implications.
 
@@ -116,7 +120,7 @@ Specifically, we aim to answer: (1) Did the Supreme Court's decision trigger inc
 
 ### Data source
 
-We collected Reddit comments posted before and after the Supreme Court decision leak (5/15/2015-11/30/2023), focusing on those containing keywords relevant to this topic, such as “affirmative action” “fair admission” “SFFA” and “admission discrimination”. Our search will be specifically targeted at certain subreddits. This approach is due to the difficulty in accurately identifying our intended content through a broad, site-wide search. To address potential representative biases that might arise from limiting our search to specific subreddits, we have intentionally chosen a diverse range of subreddits, including those named after various races and representing both major political parties, ensuring considerable heterogeneity in our data.
+We collected Reddit comments posted before and after the Supreme Court decision leak (5/15/2015 - 11/30/2023), focusing on those containing keywords relevant to this topic, such as “affirmative action” “fair admission” “SFFA” and “admission discrimination”. Our search will be specifically targeted at certain subreddits. This approach is due to the difficulty in accurately identifying our intended content through a broad, site-wide search. To address potential representative biases that might arise from limiting our search to specific subreddits, we have intentionally chosen a diverse range of subreddits, including those named after various races and representing both major political parties, ensuring considerable heterogeneity in our data.
 
 
 ### Analysis techniques
@@ -134,22 +138,9 @@ knitr::include_graphics("flowchart.png")
 
 
 
-### Results
-
-The Mann-Kendall trend test indicates a downward trend in the overall sentiment. This suggests that, over the entire period from 2015 to 2023, public sentiment on Reddit regarding affirmative action became more negative.
-
-### Conclusion and Discussion
-
-In conclusion, \
-1. The decision of the Supreme Court might be the trigger of public engagement on Reddit about this topic.\
-2. Regarding the trend of attitude over time, we observed volatility in public sentiment on Reddit towards affirmative action during this period. This volatility might reflect the public's reaction to various events related to affirmative action during this period. This phenomenon also corresponds with existing studies, which revealed perceptions of affirmative action fluctuate substantially and in an irregular manner over time (Ewoh & Elliott 1997; Schuman et al. 1997). The variability in support for affirmative action may be anticipated, considering the ambiguity and breadth of the concept, as well as the prevalent misunderstandings regarding its definition (Crosby & Cordova 1996). \
-3. But the downward trend in the overall sentiment is also noteworthy, suggesting public sentiment on Reddit regarding affirmative action became more negative.\
-4. The calculation of word frequency indicates the debate overall is focused on “Asian”. There are nuanced differences between negative comments and positive posts, as “black” is a considerable component of comments with negative emotions.\
-
-There are many limitations of the current study. As mentioned above, we do not know how representative the subreddit sample was of the whole U.S. population. Therefore, we could not blindly generalize the findings to the whole United States. Also, the LDA model hasn't been trained to the utmost, so the current posts may still include some noises.
-
-
-### Plots
+## Results
+### Analysis
+#### 1. Reddit Engagement Trend Over Time
 ```{r, echo=FALSE, fig.cap="Number of Comments", fig.width=20, fig.align='center'}
 # q1 plot
 start_date <- as.Date("2015-05-15")
@@ -180,7 +171,11 @@ p2 <- ggplot(data = before_count, mapping = aes(x = date, y = num, group = 1)) +
 ggarrange(p2,p1,ncol=2,nrow=1)
 ```
 
-```{r, echo=FALSE, fig.cap="Rolling Mean of Time Series", fig.width=20, fig.align='center'}
+We first calculated the number of posts before and after the decision of the Supreme Court, we can see a steep increase in the engagement in Reddit about relative topics after the decision date as expected.
+
+#### 2. Sentiment Trend Over Time
+#### (1) Vader
+```{r, echo=FALSE, fig.cap="Rolling Mean of Time Series", fig.width=30, fig.align='center'}
 # q2 plot
 vaders_date <- filtered_comments %>% dplyr::select(date,url)
 
@@ -205,7 +200,7 @@ vaders_by_date_after <- vaders_by_date[vaders_by_date$date >= end_date, ]
 
 ts_vaders_by_date_before <- xts(vaders_by_date_before$m, order.by = vaders_by_date_before$date)
 
-rolling_mean_vaders_by_date_before <- rollapply(ts_vaders_by_date_before, width = 5, FUN = mean, by = 5, align = 'right', na.rm = TRUE) %>% na.omit()
+rolling_mean_vaders_by_date_before <- rollapply(ts_vaders_by_date_before, width = 5, FUN = mean, by = 15, align = 'right', na.rm = TRUE) %>% na.omit()
 
 df_vaders_by_date_before <- data.frame(date = zoo::index(rolling_mean_vaders_by_date_before), mean_value = coredata(rolling_mean_vaders_by_date_before))
 
@@ -237,18 +232,197 @@ p4 <- ggplot(df_vaders_by_date_after, aes(x = date, y = mean_value)) +
 ggarrange(p3,p4,ncol=2,nrow=1)
 ```
 
+We analyzed the sentiment trend by calculating vader sentiment score. we smoothed the day-by-day jitters by plotting the rolling means across a period of 15 days for the data before the decision, and a period of 3 days for the data after the decision to make the plot more readable. The plot shows that people's sentiment towards this incident fluctuates a lot before and after the decision. 
+
+In order to have a overview of the general trend statistically, we employed the Mann-Kendall trend test to examine whether there is a monotonic trend in the sentiment change over time. As is shown in the results, the Mann-Kendall trend test indicates a downward trend in the overall sentiment. This suggests that, over the entire period from 2015 to 2023, public sentiment on Reddit regarding affirmative action became more negative.
+
+#### (2) loughran
+
+In order to get a more nuanced view of the public sentiment change, we further used the Loughran-McDonald Sentiment Word Lists. The Loughran-McDonald Sentiment Word Lists are often used in finance and accounting research to assess the tone of financial documents. Unlike typical sentiment analysis models that classify words into positive, negative, and neutral categories, the Loughran-McDonald lists were specifically designed to account for the context in which words are used in financial reports.
+
+```{r, echo=FALSE, fig.cap="Loughran-McDonald Sentiment Word Lists", fig.width=30, fig.align='center'}
+textdata <- filtered_comments
+df_tidy <- textdata %>%
+  unnest_tokens(word, comment)
+
+df_sentiment_loughran <- df_tidy %>%
+  inner_join(get_sentiments("loughran"))
+
+loughran_count <- df_sentiment_loughran %>%
+  group_by(date, sentiment) %>%
+  summarise(count = n()) %>%
+  ungroup() 
+
+loughran_count$date <- as.Date(loughran_count$date)
+loughran_before <- loughran_count %>%
+  filter(date < as.Date("2023-06-29") & date >= as.Date("2022-08-15") )
+loughran_after <- loughran_count %>%
+  filter(date >= as.Date("2023-06-29")& date < as.Date("2023-08-15"))
+
+loughran_before_smoothed <- loughran_before %>%
+  group_by(sentiment) %>%
+  arrange(date) %>%
+  mutate(rolling_mean = rollapply(count, width = 15, FUN = mean, partial = TRUE, align = 'right')) %>%
+  ungroup()
+
+loughran_after_smoothed <- loughran_after %>%
+  group_by(sentiment) %>%
+  arrange(date) %>%
+  mutate(rolling_mean = rollapply(count, width = 3, FUN = mean, partial = TRUE, align = 'right')) %>%
+  ungroup()
+
+y_limits <- range(c(loughran_before_smoothed$count, loughran_after_smoothed$count))
+
+LB <- ggplot(loughran_before_smoothed, aes(x=date, y=count, group=sentiment, color=sentiment)) +
+  geom_line() +
+  geom_point() + 
+  labs(title="Sentiment Trends Over Time (loughran-Before)",
+       x="Date",
+       y="Number of Posts",
+       color="Sentiment") +
+  theme_minimal() + 
+  theme(legend.position="bottom") +
+  ylim(y_limits)
+
+LA <- ggplot(loughran_after_smoothed , aes(x=date, y=count, group=sentiment, color=sentiment)) +
+  geom_line() +
+  geom_point() + 
+  labs(title="Sentiment Trends Over Time (loughran-After)",
+       x="Date",
+       y="Number of Posts",
+       color="Sentiment") +
+  theme_minimal() + 
+  theme(legend.position="bottom") +
+  ylim(y_limits)
+ggarrange(LB, LA,ncol=2,nrow=1)
+```
+
+The result correspond the the former one, as the plot shows a sharp increase in negative sentiment after the decision, and the overall count of positive comments is relatively low. Among the sub-category, we can see a relatively considerable percentage of *litigious* comments all across the time period, this reflects the controversial nature of the topic.
+
+
+#### (3) NRC
+
+The NRC Emotion Lexicon, also known as EmoLex, provides another way of looking into the sentiment categories. It is a list of English words and their associations with eight basic emotions (anger, fear, anticipation, trust, surprise, sadness, joy, and disgust) and two sentiments (negative and positive) developed by Saif Mohammad and Peter Turney. The lexicon categorizes each word into these emotions and sentiments based on human annotations.
+
+```{r, echo=FALSE, fig.cap="NRC Emotion Lexicon", fig.width=30, fig.align='center'}
+
+df_sentiment_nrc <- df_tidy %>%
+  inner_join(get_sentiments("nrc"))
+
+nrc_count <- df_sentiment_nrc %>%
+  group_by(date, sentiment) %>%
+  summarise(count = n()) %>%
+  ungroup() 
+
+nrc_count$date <- as.Date(nrc_count$date)
+nrc_before <- nrc_count %>%
+  filter(date < as.Date("2023-06-29") & date >= as.Date("2022-08-15") )
+nrc_after <- nrc_count %>%
+  filter(date >= as.Date("2023-06-29")& date < as.Date("2023-08-15"))
+
+nrc_before_smoothed <- nrc_before %>%
+  group_by(sentiment) %>%
+  arrange(date) %>%
+  mutate(rolling_mean = rollapply(count, width = 15, FUN = mean, partial = TRUE, align = 'right')) %>%
+  ungroup()
+
+nrc_after_smoothed <- nrc_after %>%
+  group_by(sentiment) %>%
+  arrange(date) %>%
+  mutate(rolling_mean = rollapply(count, width = 3, FUN = mean, partial = TRUE, align = 'right')) %>%
+  ungroup()
+
+nrc_before_smoothed_pos<-nrc_before_smoothed %>%
+  filter(sentiment=="positive" | sentiment=="joy" | sentiment=="anticipation" | sentiment=="trust" | sentiment=="surprise")
+nrc_before_smoothed_neg<-nrc_before_smoothed %>%
+  filter(sentiment=="negative" | sentiment=="anger" | sentiment=="disgust" | sentiment=="fear" | sentiment=="sadness")
+nrc_after_smoothed_pos<-nrc_after_smoothed %>%
+  filter(sentiment=="positive" | sentiment=="joy" | sentiment=="anticipation" | sentiment=="trust" | sentiment=="surprise")
+nrc_after_smoothed_neg<-nrc_after_smoothed %>%
+  filter(sentiment=="negative" | sentiment=="anger" | sentiment=="disgust" | sentiment=="fear" | sentiment=="sadness")
+
+y_limits <- range(c(nrc_after_smoothed_neg$count,nrc_before_smoothed_neg$count,nrc_after_smoothed_pos$count, nrc_after_smoothed_neg$count))
+
+NBP <- ggplot(nrc_before_smoothed_pos, aes(x=date, y=count, group=sentiment, color=sentiment)) +
+  geom_line() +
+  geom_point() + 
+  labs(title="Positive Sentiment Trends Over Time (nrc-Before)",
+       x="Date",
+       y="Number of Posts",
+       color="Sentiment") +
+  theme_minimal() + 
+  theme(legend.position="bottom") + 
+  ylim(y_limits)
+
+NBN <- ggplot(nrc_before_smoothed_neg, aes(x=date, y=count, group=sentiment, color=sentiment)) +
+  geom_line() +
+  geom_point() + 
+  labs(title="Negative Sentiment Trends Over Time (nrc-Before)",
+       x="Date",
+       y="Number of Posts",
+       color="Sentiment") +
+  theme_minimal() + 
+  theme(legend.position="bottom") + 
+  ylim(y_limits)
+
+NAP <- ggplot(nrc_after_smoothed_pos , aes(x=date, y=count, group=sentiment, color=sentiment)) +
+  geom_line() +
+  geom_point() + 
+  labs(title="Positive Sentiment Trends Over Time (nrc-After)",
+       x="Date",
+       y="Number of Posts",
+       color="Sentiment") +
+  theme_minimal() + 
+  theme(legend.position="bottom") + 
+  ylim(y_limits)
+
+NAN <- ggplot(nrc_after_smoothed_neg , aes(x=date, y=count, group=sentiment, color=sentiment)) +
+  geom_line() +
+  geom_point() + 
+  labs(title="Negative  Sentiment Trends Over Time (nrc-After)",
+       x="Date",
+       y="Number of Posts",
+       color="Sentiment") +
+  theme_minimal() + 
+  theme(legend.position="bottom") + 
+  ylim(y_limits)
+
+ggarrange(NBP,NAP, NBN, NAN,ncol=2,nrow=2)
+```
+
+Both positive and negative comments came to a peak after the leak of the decision. This corresponds with the increased engagement revealed in our first step of analysis.
+
+Looking at the trends of comments with positive sentiment, "trust" is the most noticeable component all across the period, followed by "anticipation". The condition is more complicated for comments with negative sentiment, "anger" "sadness" and "fear" seem to overlap with each other during this period.
+
+
+#### 3. Word Frequency by Sentiment
 <!-- q3 wordcloud -->
 ```{r, echo=FALSE, fig.cap="WordCloud for all comments", out.width='200px', fig.align='center'}
 knitr::include_graphics("wordcloud1.png")
 ```
-
 ```{r, echo=FALSE, fig.cap="WordCloud for positive comments", out.width='200px', fig.align='center'}
-knitr::include_graphics("wordcloud1.png")
+knitr::include_graphics("wordcloud2.png")
+```
+```{r, echo=FALSE, fig.cap="WordCloud for negative comments", out.width='200px', fig.align='center'}
+knitr::include_graphics("wordcloud3.png")
 ```
 
-```{r, echo=FALSE, fig.cap="WordCloud for negative comments", out.width='200px', fig.align='center'}
-knitr::include_graphics("wordcloud1.png")
-```
+We then look into the most commonly used words in different sentiments. The calculation of word frequency indicates the debate overall is focused on “Asian”. There are nuanced differences between negative comments and positive posts, as “black” is a considerable component of comments with negative emotions.
+We further got a view of which words we might see more of if related words such as "asian", "american", and "affirmative", "action" are removed, since it seems these are being picked up the most due to the nature of the topic of discussion. We can see that among the comments related to negative feelings, racism is the dominant accusation. 
+
+
+
+### Conclusion and Discussion
+
+In conclusion, \
+1. The decision of the Supreme Court might be the trigger of public engagement on Reddit about this topic.\
+2. Regarding the trend of attitude over time, we observed volatility in public sentiment on Reddit towards affirmative action during this period. This volatility might reflect the public's reaction to various events related to affirmative action during this period. This phenomenon also corresponds with existing studies, which revealed perceptions of affirmative action fluctuate substantially and in an irregular manner over time[@Ewoh1997][@Schuman1997]. The variability in support for affirmative action may be anticipated, considering the ambiguity and breadth of the concept, as well as the prevalent misunderstandings regarding its definition[@Crosby1996]. \
+3. But the downward trend in the overall sentiment is also noteworthy, suggesting public sentiment on Reddit regarding affirmative action became more negative.\
+4. The calculation of word frequency indicates the debate overall is focused on “Asian”. There are nuanced differences between negative comments and positive posts, as “black” is a considerable component of comments with negative emotions. After removing words used for searching, we can see racism is the dominant accusation among the comments related to negative feelings.\
+
+There are many limitations of the current study. As mentioned above, we do not know how representative the subreddit sample was of the whole U.S. population. Therefore, we could not blindly generalize the findings to the whole United States. Also, the LDA model hasn't been trained to the utmost, so the current posts may still include some noises.
+
+
 
 
 ```{r, echo=FALSE, fig.cap="Box Plot of mean vader from different subreddits", fig.width=10}
@@ -275,12 +449,13 @@ ggplot(vaders_subreddit, aes(x = subreddit, y = vader)) +
 
 ### Table
 ```{r, echo=FALSE}
+# 這個其實可以不用
 kable(head(vaders_by_date), caption = "Mean Vader score by day", row.names = FALSE)
 ```
 
 
 ```{r, echo=FALSE}
-# allTopicNames
+# allTopicNames 可以放在LDA-Topic Modeling這裏展示一下我們選的topic
 df_LDA_topics <- read.csv("allTopicNames.csv", header = TRUE, encoding = "UTF-8")
 colnames(df_LDA_topics) <- c("topic_number","topic_words")
 # kable(df_LDA_topics, caption = "allTopicNames")
@@ -290,7 +465,7 @@ kable(df_LDA_topics_filtered, caption = "filtered TopicNames",row.names = FALSE)
 ```
 
 ```{r, echo=FALSE}
-# MK-test table
+# MK-test table 建議放在Vader后？因爲這是我們主要做的，就小小展示一下咯？
 df_MK<- data.frame(
   vader_tau <- c(-0.0623,-0.0381,-0.1170),
   vader_p <- c(0.0490,0.2861,0.3550),
@@ -303,10 +478,3 @@ kable(df_MK, caption = "MK-test table",row.names = TRUE)
 ```
 
 ## References
-
-\linespread{1}
-
-
-::: {#refs}
-
-:::
