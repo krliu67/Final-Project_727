@@ -5,7 +5,8 @@ author: "Chloe Chen & Kangrui Liu"
 date: "`r Sys.Date()`"
 output:
   pdf_document:
-    toc: TRUE
+    toc: true
+    toc_depth: 2
     df_print: kable
 bibliography: references.bib
 csl: american-sociological-association.csl
@@ -17,8 +18,7 @@ header-includes:
 ```{r setup, include=FALSE, tidy=TRUE}
 knitr::opts_chunk$set(echo=TRUE,cache=TRUE, 
                       autodep=TRUE, cache.comments=FALSE,
-                      message=FALSE, warning=FALSE,
-                      fig.width=4.5, fig.height=3)
+                      message=FALSE, warning=FALSE)
 ```
 
 ```{r, message = FALSE, warning = FALSE, include=FALSE}
@@ -45,6 +45,12 @@ library(GGally)
 library(magrittr)
 library(dplyr)
 library(knitr)
+library(wordcloud)
+library(tidytext)
+library(tm)
+library(RColorBrewer)
+library(dplyr)
+library(png)
 ```
 
 ```{r, include = FALSE}
@@ -77,6 +83,20 @@ sentiments <- read.csv("../data/sentiments.csv",
                      # sep = ";", 
                      encoding = "UTF-8")
 ```
+
+```{r, include = FALSE}
+all_comments <- read.csv("../data/comments/all_comments.csv", 
+                     header = TRUE, 
+                     # sep = ";", 
+                     encoding = "UTF-8")
+
+all_comments$date <- as.Date(all_comments$date)
+
+irrelevantWords <- c("[deleted]","[removed]")
+
+filtered_all_comments <- all_comments %>% filter(comment != "[deleted]" & comment != "[removed]")
+```
+
 # Abstract
 
 This study investigates public sentiment and discourse on Reddit regarding the landmark Supreme Court decision in Students for Fair Admissions v. Harvard, which ruled race-based affirmative action in college admissions unconstitutional. Our research aims to understand the impact of this decision on public opinion, particularly among Reddit users. The study focuses on three key questions: 1) Did the Supreme Court's decision incite increased discussion about race-based affirmative action among Reddit users? 2) How did public sentiment change over this period, particularly before and after the Supreme Court's decision? 3) What specific topics dominated these discussions? To answer these questions, we collected data from Reddit comments, employed the Latent Dirichlet Allocation (LDA) model for content filtering and sentiment analysis, supplemented by time series analysis to track sentiment changes. We also analyzed word frequencies to understand the focus of discussions. Our findings indicate a noticeable increase in discussions about affirmative action on Reddit following the Supreme Court decision. The overall sentiment trended negatively over time, suggesting growing public disapproval of affirmative action policies on the platform. Word frequency calculations reveal "Asian" as a predominant focus in the debate, with differing emotional tones in discussions about different racial groups.
@@ -108,7 +128,10 @@ We collected relevant data using RedditExtractoR API on R. Briefly, we use keywo
 
 We employ the Latent Dirichlet Allocation (LDA) model to filter posts unrelated to our investigation after initial data scraping. After this, we conducted sentiment analysis coupled with time series analysis to investigate changes in sentiment over time. We also organized the most commonly used words with wordcloud to depict word frequencies associated with different sentiments. Finally, we include a total of 14785 comments in our analysis. Our working flow is shown in the following graph.
 
-![flowchart](flowchart.png){width=80%}
+```{r, echo = FALSE, fig.cap="flowchart",out.width='400px',fig.align='center'}
+knitr::include_graphics("flowchart.png")
+```
+
 
 
 ### Results
@@ -125,6 +148,159 @@ In conclusion, \
 
 There are many limitations of the current study. As mentioned above, we do not know how representative the subreddit sample was of the whole U.S. population. Therefore, we could not blindly generalize the findings to the whole United States. Also, the LDA model hasn't been trained to the utmost, so the current posts may still include some noises.
 
+
+### Plots
+```{r, echo=FALSE, fig.cap="Number of Comments", fig.width=20, fig.align='center'}
+# q1 plot
+start_date <- as.Date("2015-05-15")
+end_date <- as.Date("2023-06-29")
+
+before <-  filtered_all_comments[filtered_all_comments$date >= start_date & filtered_all_comments$date < end_date, ]
+after <- filtered_all_comments[filtered_all_comments$date >= end_date, ]
+
+before_count <- before %>% dplyr::group_by(date) %>%  dplyr::summarise(num = dplyr::n())
+after_count <- after %>% dplyr::group_by(date) %>%  dplyr::summarise(num = dplyr::n())
+
+y_limits <- range(c(after_count$num, before_count$num))
+
+p1 <- ggplot(data = after_count, mapping = aes(x = date, y = num, group = 1)) +
+  geom_line() +
+  ylim(y_limits) +
+  scale_x_date(date_breaks = "1 month", date_labels = "%Y-%m") + 
+  xlab('Date after Decision') +
+  ylab('Number of Comments')
+
+p2 <- ggplot(data = before_count, mapping = aes(x = date, y = num, group = 1)) +
+  geom_line() +
+  ylim(y_limits) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y-%m") + 
+  xlab('Date before Decision') +
+  ylab('Number of Comments')
+
+ggarrange(p2,p1,ncol=2,nrow=1)
+```
+
+```{r, echo=FALSE, fig.cap="Rolling Mean of Time Series", fig.width=20, fig.align='center'}
+# q2 plot
+vaders_date <- filtered_comments %>% dplyr::select(date,url)
+
+vaders_date <- cbind(vaders_date,sentiments$Vader)
+
+colnames(vaders_date) <- c("date","url","vader")
+
+start_date <- as.Date("2015-05-15")
+end_date <- as.Date("2023-06-29")
+
+vaders_date <- vaders_date[vaders_date$date >= start_date, ]
+
+vaders_by_date <- vaders_date %>%  dplyr::group_by(date) %>% dplyr::summarise(mean_vader = mean(vader)) %>% data.frame()
+vaders_by_date$date <- as.Date(vaders_by_date$date)
+
+start_date <- as.Date("2015-05-15")
+end_date <- as.Date("2023-06-29")
+
+vaders_by_date_before <- vaders_by_date[vaders_by_date$date >= start_date & vaders_by_date$date < end_date, ]
+
+vaders_by_date_after <- vaders_by_date[vaders_by_date$date >= end_date, ]
+
+ts_vaders_by_date_before <- xts(vaders_by_date_before$m, order.by = vaders_by_date_before$date)
+
+rolling_mean_vaders_by_date_before <- rollapply(ts_vaders_by_date_before, width = 5, FUN = mean, by = 5, align = 'right', na.rm = TRUE) %>% na.omit()
+
+df_vaders_by_date_before <- data.frame(date = zoo::index(rolling_mean_vaders_by_date_before), mean_value = coredata(rolling_mean_vaders_by_date_before))
+
+df_vaders_by_date_before <- df_vaders_by_date_before %>% na.omit()
+
+
+ts_vaders_by_date_after <- xts(vaders_by_date_after$m, order.by = vaders_by_date_after$date)
+
+rolling_mean_vaders_by_date_after <- rollapply(ts_vaders_by_date_after, width = 3, FUN = mean, by = 3, align = 'right', na.rm = TRUE) %>% na.omit()
+
+df_vaders_by_date_after <- data.frame(date = zoo::index(rolling_mean_vaders_by_date_after), mean_value = coredata(rolling_mean_vaders_by_date_after))
+
+df_vaders_by_date_after <- df_vaders_by_date_after %>% na.omit()
+
+y_limits <- range(c(df_vaders_by_date_after$mean_value, df_vaders_by_date_before$mean_value))
+
+p3 <- ggplot(df_vaders_by_date_before, aes(x = date, y = mean_value)) +
+  geom_line() +
+  ylim(y_limits) +
+  theme_minimal() +
+  labs(title = "5-Day Rolling Mean of Time Series", x = "Date before Decision", y = "Mean Sentiment Scores")
+
+p4 <- ggplot(df_vaders_by_date_after, aes(x = date, y = mean_value)) +
+  geom_line() +
+  ylim(y_limits) +
+  theme_minimal() +
+  labs(title = "3-Day Rolling Mean of Time Series", x = "Date after Decision", y = "Mean Sentiment Scores")
+
+ggarrange(p3,p4,ncol=2,nrow=1)
+```
+
+<!-- q3 wordcloud -->
+```{r, echo=FALSE, fig.cap="WordCloud for all comments", out.width='200px', fig.align='center'}
+knitr::include_graphics("wordcloud1.png")
+```
+
+```{r, echo=FALSE, fig.cap="WordCloud for positive comments", out.width='200px', fig.align='center'}
+knitr::include_graphics("wordcloud1.png")
+```
+
+```{r, echo=FALSE, fig.cap="WordCloud for negative comments", out.width='200px', fig.align='center'}
+knitr::include_graphics("wordcloud1.png")
+```
+
+
+```{r, echo=FALSE, fig.cap="Box Plot of mean vader from different subreddits", fig.width=10}
+for (i in 1:dim(filtered_comments)[1]) {
+  temp_url <- filtered_comments$url[i]
+  temp_matches <- sub(".*/r/(.*)/comments/.*", "\\1", temp_url)
+  filtered_comments$subreddit[i] <- temp_matches
+}
+rm(temp_matches)
+rm(temp_url)
+
+vaders_subreddit <- filtered_comments %>% dplyr::select(subreddit)
+
+vaders_subreddit <- cbind(vaders_subreddit, sentiments$Vader)
+
+colnames(vaders_subreddit) <- c("subreddit","vader")
+
+ggplot(vaders_subreddit, aes(x = subreddit, y = vader)) +
+  geom_boxplot() +
+  labs(title = "Box Plot", x = "subreddit", y = "vader") +
+  theme_minimal()
+```
+
+
+### Table
+```{r, echo=FALSE}
+kable(head(vaders_by_date), caption = "Mean Vader score by day", row.names = FALSE)
+```
+
+
+```{r, echo=FALSE}
+# allTopicNames
+df_LDA_topics <- read.csv("allTopicNames.csv", header = TRUE, encoding = "UTF-8")
+colnames(df_LDA_topics) <- c("topic_number","topic_words")
+# kable(df_LDA_topics, caption = "allTopicNames")
+# choose 2,3,4,5,6,8,12,13,14,16,19,20,22,23,24
+df_LDA_topics_filtered <- df_LDA_topics[c(2,3,4,5,6,8,12,13,14,16,19,20,22,23,24),]
+kable(df_LDA_topics_filtered, caption = "filtered TopicNames",row.names = FALSE)
+```
+
+```{r, echo=FALSE}
+# MK-test table
+df_MK<- data.frame(
+  vader_tau <- c(-0.0623,-0.0381,-0.1170),
+  vader_p <- c(0.0490,0.2861,0.3550),
+  afinn_tau <- c(0.0747,-0.0784,0.0091),
+  afinn_p <- c(0.0969,0.0135,0.8942)
+)
+colnames(df_MK) <- c("vader_tau","vader_p","afinn_tau","afinn_p")
+row.names(df_MK) <- c("data_overall","data_before","data_after")
+kable(df_MK, caption = "MK-test table",row.names = TRUE)
+```
 
 ## References
 
